@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nifty 500 SuperTrend Screener</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0e1a;
+            --surface: #111827;
+            --surface2: #1a2235;
+            --border: #1e2d45;
+            --accent: #00d4aa;
+            --accent2: #f97316;
+            --bull: #22c55e;
+            --bear: #ef4444;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --card-glow: rgba(0, 212, 170, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            min-height: 100vh;
+        }
+
+        /* ── HEADER ── */
+        header {
+            background: linear-gradient(135deg, #0f1929 0%, #0a1628 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo h1 {
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+
+        .logo span {
+            display: block;
+            font-size: 11px;
+            color: var(--muted);
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 24px;
+        }
+
+        .stat-pill {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .stat-pill strong {
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* ── MAIN LAYOUT ── */
+        .main {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 0;
+            min-height: calc(100vh - 69px);
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: sticky;
+            top: 69px;
+            height: calc(100vh - 69px);
+            overflow-y: auto;
+        }
+
+        .sidebar-section h3 {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 9px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            border-color: var(--accent);
+        }
+
+        .select-wrapper {
+            position: relative;
+        }
+
+        .select-wrapper::after {
+            content: '▾';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            pointer-events: none;
+        }
+
+        .signal-toggle {
+            display: flex;
+            gap: 6px;
+        }
+
+        .signal-btn {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--muted);
+            font-size: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .signal-btn.active-bull {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: var(--bull);
+            color: var(--bull);
+        }
+
+        .signal-btn.active-bear {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: var(--bear);
+            color: var(--bear);
+        }
+
+        .signal-btn.active-both {
+            background: rgba(0, 212, 170, 0.12);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+        }
+
+        .param-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .param-row .form-group {
+            margin-bottom: 0;
+        }
+
+        /* ── SCAN BUTTON ── */
+        .scan-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            color: #0a0e1a;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scan-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 212, 170, 0.35);
+        }
+
+        .scan-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── PROGRESS ── */
+        .progress-box {
+            display: none;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+        }
+
+        .progress-box.visible {
+            display: block;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .progress-symbol {
+            color: var(--accent);
+            font-family: 'Space Mono', monospace;
+        }
+
+        .progress-count {
+            color: var(--muted);
+        }
+
+        .progress-bar-wrap {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #0099cc);
+            border-radius: 2px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        /* ── CONTENT ── */
+        .content {
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .content-header h2 {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+
+        .result-meta {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* ── VIEW TOGGLE ── */
+        .view-toggle {
+            display: flex;
+            gap: 6px;
+        }
+
+        .view-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--muted);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: var(--accent);
+            color: #0a0e1a;
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            color: var(--muted);
+            gap: 12px;
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            opacity: 0.3;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* ── RESULTS SUMMARY CARDS ── */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+
+        .summary-card .s-label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .summary-card .s-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 22px;
+            margin-top: 4px;
+        }
+
+        .summary-card.bull .s-value {
+            color: var(--bull);
+        }
+
+        .summary-card.bear .s-value {
+            color: var(--bear);
+        }
+
+        .summary-card.total .s-value {
+            color: var(--accent);
+        }
+
+        .summary-card.scanned .s-value {
+            color: var(--text);
+        }
+
+        /* ── TABLE ── */
+        .table-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead tr {
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(30, 45, 69, 0.5);
+            transition: background 0.15s;
+            cursor: pointer;
+        }
+
+        tbody tr:hover {
+            background: var(--surface2);
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        td {
+            padding: 12px 16px;
+            vertical-align: middle;
+        }
+
+        .stock-name strong {
+            display: block;
+            font-size: 13px;
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+        }
+
+        .stock-name span {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+            display: block;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-bull {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--bull);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .badge-bear {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--bear);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .cap-badge {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 7px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .price-cell {
+            font-family: 'Space Mono', monospace;
+            font-size: 13px;
+        }
+
+        .change-pos {
+            color: var(--bull);
+        }
+
+        .change-neg {
+            color: var(--bear);
+        }
+
+        .st-line {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* ── CHART VIEW ── */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 16px;
+        }
+
+        .chart-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.15s;
+        }
+
+        .chart-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 212, 170, 0.1);
+        }
+
+        .chart-card-header {
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .chart-card-header .symbol {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        .chart-card-header .cname {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .chart-card-header .price-info {
+            text-align: right;
+        }
+
+        .chart-card-header .price {
+            font-family: 'Space Mono', monospace;
+            font-size: 15px;
+            color: var(--text);
+        }
+
+        .chart-card-body {
+            padding: 12px 16px 16px;
+            height: 180px;
+            position: relative;
+        }
+
+        .chart-card-footer {
+            padding: 10px 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 16px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .chart-card-footer span strong {
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-family: 'Space Mono', monospace;
+            color: var(--accent);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px;
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .modal-stat {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .modal-stat .ms-label {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .modal-stat .ms-val {
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+            margin-top: 4px;
+        }
+
+        .modal-chart-wrap {
+            height: 300px;
+            position: relative;
+        }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .scanning {
+            animation: pulse 1.5s ease infinite;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <header>
+        <div class="logo">
+            <div class="logo-icon">📈</div>
+            <div>
+                <h1>NIFTY SCREENER</h1>
+                <span>SuperTrend Breakout Engine</span>
+            </div>
+        </div>
+        <div class="header-stats">
+            <div class="stat-pill">Universe: <strong>Nifty 500</strong></div>
+            <div class="stat-pill">Engine: <strong>SuperTrend</strong></div>
+            <div class="stat-pill" id="lastScanTime">Last Scan: <strong>—</strong></div>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <div class="main">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+
+            <div class="sidebar-section">
+                <h3>Segment</h3>
+                <div class="form-group">
+                    <label>Market Cap</label>
+                    <div class="select-wrapper">
+                        <select id="capSelect">
+                            <option value="All">All Caps</option>
+                            <option value="Large Cap">Large Cap</option>
+                            <option value="Mid Cap">Mid Cap</option>
+                            <option value="Small Cap">Small Cap</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Sector</label>
+                    <div class="select-wrapper">
+                        <select id="sectorSelect">
+                            <option value="">All Sectors</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="sidebar-section">
+                <h3>Timeframe</h3>
+                <div class="form-group">
+                    <div class="select-wrapper">
+                        <select id="timeframeSelect">
+                            <option value="1W" selected>Weekly (1W)</option>
+                            <option value="1D">Daily (1D)</option>
+                            <option value="1M">Monthly (1M)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="sidebar-section">
+                <h3>Indicator</h3>
+                <div class="form-group">
+                    <div class="select-wrapper">
+                        <select id="indicatorSelect">
+                            <option value="supertrend">SuperTrend</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="param-row">
+                    <div class="form-group">
+                        <label>Period</label>
+                        <input type="number" id="stPeriod" value="7" min="1" max="50" />
+                    </div>
+                    <div class="form-group">
+                        <label>Multiplier</label>
+                        <input type="number" id="stMultiplier" value="3" min="0.5" max="10" step="0.5" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="sidebar-section">
+                <h3>Signal Filter</h3>
+                <div class="signal-toggle">
+                    <button class="signal-btn active-both" data-val="both" onclick="setSignal('both')">Both</button>
+                    <button class="signal-btn" data-val="bullish" onclick="setSignal('bullish')">🟢 Bull</button>
+                    <button class="signal-btn" data-val="bearish" onclick="setSignal('bearish')">🔴 Bear</button>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <button class="scan-btn" id="scanBtn" onclick="startScan()">▶ RUN SCAN</button>
+
+            <div class="progress-box" id="progressBox">
+                <div class="progress-header">
+                    <span class="progress-symbol scanning" id="progressSymbol">—</span>
+                    <span class="progress-count" id="progressCount">0 / 0</span>
+                </div>
+                <div class="progress-bar-wrap">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- CONTENT -->
+        <main class="content">
+
+            <div class="content-header">
+                <h2>SCAN RESULTS</h2>
+                <div style="display:flex;gap:10px;align-items:center">
+                    <span class="result-meta" id="resultMeta"></span>
+                    <div class="view-toggle">
+                        <button class="view-btn active" id="tableViewBtn" onclick="setView('table')">Table</button>
+                        <button class="view-btn" id="chartViewBtn" onclick="setView('chart')">Charts</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards" id="summaryCards" style="display:none">
+                <div class="summary-card total">
+                    <div class="s-label">Breakouts Found</div>
+                    <div class="s-value" id="totalCount">0</div>
+                </div>
+                <div class="summary-card bull">
+                    <div class="s-label">Bullish 🟢</div>
+                    <div class="s-value" id="bullCount">0</div>
+                </div>
+                <div class="summary-card bear">
+                    <div class="s-label">Bearish 🔴</div>
+                    <div class="s-value" id="bearCount">0</div>
+                </div>
+                <div class="summary-card scanned">
+                    <div class="s-label">Stocks Scanned</div>
+                    <div class="s-value" id="scannedCount">0</div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="icon">🔍</div>
+                <p>Configure your filters and click <strong style="color:var(--accent)">RUN SCAN</strong> to find
+                    breakouts</p>
+                <p style="font-size:12px;color:var(--muted)">Weekly SuperTrend breakouts across Nifty 500</p>
+            </div>
+
+            <!-- Table View -->
+            <div id="tableView" style="display:none">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Stock</th>
+                                <th>Signal</th>
+                                <th>Cap</th>
+                                <th>Sector</th>
+                                <th>Close ₹</th>
+                                <th>Change %</th>
+                                <th>SuperTrend</th>
+                                <th>Volume</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Charts View -->
+            <div id="chartsView" style="display:none">
+                <div class="charts-grid" id="chartsGrid"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modalTitle">STOCK</h2>
+                    <div id="modalSubtitle" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
+                </div>
+                <button class="modal-close" onclick="closeModalDirect()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-stats" id="modalStats"></div>
+                <div class="modal-chart-wrap">
+                    <canvas id="modalChartCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── STATE ──
+        let currentSignal = "both";
+        let currentView = "table";
+        let scanResults = [];
+        let chartInstances = {};
+        let modalChart = null;
+        let scanInterval = null;
+
+        // ── INIT ──
+        document.addEventListener("DOMContentLoaded", async () => {
+            const res = await fetch("/api/segments");
+            const data = await res.json();
+
+            const sectorSel = document.getElementById("sectorSelect");
+            data.sectors.forEach(s => {
+                const opt = document.createElement("option");
+                opt.value = s; opt.textContent = s;
+                sectorSel.appendChild(opt);
+            });
+        });
+
+        // ── SIGNAL TOGGLE ──
+        function setSignal(val) {
+            currentSignal = val;
+            document.querySelectorAll(".signal-btn").forEach(b => {
+                b.className = "signal-btn";
+                if (b.dataset.val === val) {
+                    if (val === "bullish") b.classList.add("active-bull");
+                    else if (val === "bearish") b.classList.add("active-bear");
+                    else b.classList.add("active-both");
+                }
+            });
+        }
+
+        // ── VIEW TOGGLE ──
+        function setView(v) {
+            currentView = v;
+            document.getElementById("tableViewBtn").classList.toggle("active", v === "table");
+            document.getElementById("chartViewBtn").classList.toggle("active", v === "chart");
+            document.getElementById("tableView").style.display = v === "table" ? "block" : "none";
+            document.getElementById("chartsView").style.display = v === "chart" ? "grid" : "none";
+            if (v === "chart") renderChartCards();
+        }
+
+        // ── START SCAN ──
+        async function startScan() {
+            const cap = document.getElementById("capSelect").value;
+            const sector = document.getElementById("sectorSelect").value;
+            const segment = sector || cap;
+
+            const payload = {
+                segment,
+                timeframe: document.getElementById("timeframeSelect").value,
+                signal_filter: currentSignal,
+                st_period: document.getElementById("stPeriod").value,
+                st_multiplier: document.getElementById("stMultiplier").value,
+            };
+
+            const btn = document.getElementById("scanBtn");
+            btn.disabled = true;
+            btn.textContent = "⏳ SCANNING...";
+
+            document.getElementById("progressBox").classList.add("visible");
+            document.getElementById("emptyState").style.display = "none";
+            document.getElementById("summaryCards").style.display = "none";
+            document.getElementById("tableView").style.display = "none";
+            document.getElementById("chartsView").style.display = "none";
+            scanResults = [];
+
+            try {
+                await fetch("/api/scan", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                scanInterval = setInterval(pollProgress, 800);
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = "▶ RUN SCAN";
+                alert("Error starting scan: " + e.message);
+            }
+        }
+
+        // ── POLL PROGRESS ──
+        async function pollProgress() {
+            try {
+                const res = await fetch("/api/scan/progress");
+                const data = await res.json();
+
+                const pct = data.total > 0 ? (data.progress / data.total * 100).toFixed(0) : 0;
+                document.getElementById("progressBar").style.width = pct + "%";
+                document.getElementById("progressSymbol").textContent = data.current_symbol || "Scanning...";
+                document.getElementById("progressCount").textContent = `${data.progress} / ${data.total}`;
+                document.getElementById("scannedCount").textContent = data.total || 0;
+
+                if (!data.running) {
+                    clearInterval(scanInterval);
+                    await fetchResults(data.total);
+                }
+            } catch (e) {
+                clearInterval(scanInterval);
+            }
+        }
+
+        // ── FETCH RESULTS ──
+        async function fetchResults(scanned) {
+            const res = await fetch("/api/scan/results");
+            const data = await res.json();
+            scanResults = data.results || [];
+
+            const btn = document.getElementById("scanBtn");
+            btn.disabled = false;
+            btn.textContent = "▶ RUN SCAN";
+            document.getElementById("progressBox").classList.remove("visible");
+
+            // Update time
+            const now = new Date();
+            document.getElementById("lastScanTime").innerHTML =
+                `Last Scan: <strong>${now.toLocaleTimeString()}</strong>`;
+
+            // Summary
+            const bullish = scanResults.filter(r => r.signal === "bullish").length;
+            const bearish = scanResults.filter(r => r.signal === "bearish").length;
+
+            document.getElementById("summaryCards").style.display = "grid";
+            document.getElementById("totalCount").textContent = scanResults.length;
+            document.getElementById("bullCount").textContent = bullish;
+            document.getElementById("bearCount").textContent = bearish;
+            document.getElementById("scannedCount").textContent = scanned || 0;
+
+            const meta = `${scanResults.length} breakout${scanResults.length !== 1 ? "s" : ""} found`;
+            document.getElementById("resultMeta").textContent = meta;
+
+            if (scanResults.length === 0) {
+                document.getElementById("emptyState").style.display = "flex";
+                document.getElementById("emptyState").querySelector("p").textContent = "No breakouts found for selected filters.";
+                return;
+            }
+
+            renderTable();
+            if (currentView === "chart") renderChartCards();
+
+            document.getElementById("tableView").style.display = currentView === "table" ? "block" : "none";
+            document.getElementById("chartsView").style.display = currentView === "chart" ? "grid" : "none";
+        }
+
+        // ── RENDER TABLE ──
+        function renderTable() {
+            const tbody = document.getElementById("resultsTableBody");
+            tbody.innerHTML = "";
+
+            scanResults.forEach((r, i) => {
+                const changeClass = r.price_change >= 0 ? "change-pos" : "change-neg";
+                const changeSign = r.price_change >= 0 ? "+" : "";
+                const signal = r.signal === "bullish"
+                    ? '<span class="badge badge-bull">▲ BULLISH</span>'
+                    : '<span class="badge badge-bear">▼ BEARISH</span>';
+                const vol = r.volume > 1e7 ? (r.volume / 1e7).toFixed(1) + "Cr" :
+                    r.volume > 1e5 ? (r.volume / 1e5).toFixed(1) + "L" : r.volume;
+
+                const tr = document.createElement("tr");
+                tr.className = "fade-in";
+                tr.innerHTML = `
+      <td style="color:var(--muted);font-size:12px">${i + 1}</td>
+      <td class="stock-name">
+        <strong>${r.symbol}</strong>
+        <span>${r.name}</span>
+      </td>
+      <td>${signal}</td>
+      <td><span class="cap-badge">${r.cap.replace(" Cap", "")}</span></td>
+      <td style="color:var(--muted);font-size:12px">${r.sector}</td>
+      <td class="price-cell">₹${r.close.toLocaleString()}</td>
+      <td class="price-cell ${changeClass}">${changeSign}${r.price_change}%</td>
+      <td class="st-line">₹${r.supertrend_line.toLocaleString()}</td>
+      <td style="color:var(--muted);font-size:12px">${vol}</td>
+    `;
+                tr.onclick = () => openModal(r);
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ── RENDER CHART CARDS ──
+        function renderChartCards() {
+            // Destroy existing
+            Object.values(chartInstances).forEach(c => c.destroy());
+            chartInstances = {};
+
+            const grid = document.getElementById("chartsGrid");
+            grid.innerHTML = "";
+
+            scanResults.forEach(r => {
+                const card = document.createElement("div");
+                card.className = "chart-card fade-in";
+                card.onclick = () => openModal(r);
+
+                const changeClass = r.price_change >= 0 ? "change-pos" : "change-neg";
+                const changeSign = r.price_change >= 0 ? "+" : "";
+                const signal = r.signal === "bullish"
+                    ? '<span class="badge badge-bull">▲ BULL</span>'
+                    : '<span class="badge badge-bear">▼ BEAR</span>';
+
+                card.innerHTML = `
+      <div class="chart-card-header">
+        <div>
+          <div class="symbol">${r.symbol}</div>
+          <div class="cname">${r.name}</div>
+        </div>
+        <div class="price-info">
+          <div class="price">₹${r.close.toLocaleString()}</div>
+          <div style="font-size:11px;margin-top:2px" class="${changeClass}">${changeSign}${r.price_change}%</div>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <canvas id="card-chart-${r.symbol}"></canvas>
+      </div>
+      <div class="chart-card-footer">
+        ${signal}
+        <span><strong>${r.sector}</strong></span>
+        <span>ST: <strong>₹${r.supertrend_line}</strong></span>
+        <span class="cap-badge">${r.cap.replace(" Cap", "")}</span>
+      </div>
+    `;
+
+                grid.appendChild(card);
+
+                // Draw mini chart
+                setTimeout(() => {
+                    const ctx = document.getElementById(`card-chart-${r.symbol}`);
+                    if (!ctx) return;
+                    const inst = drawMiniChart(ctx, r);
+                    chartInstances[r.symbol] = inst;
+                }, 50);
+            });
+        }
+
+        // ── MINI CHART ──
+        function drawMiniChart(ctx, r) {
+            const labels = r.candles.map(c => c.Date.slice(5, 10));
+            const prices = r.candles.map(c => c.Close);
+            const stLine = r.candles.map(c => c.supertrend_line);
+            const isBull = r.signal === "bullish";
+
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Close',
+                            data: prices,
+                            borderColor: isBull ? '#22c55e' : '#ef4444',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            fill: true,
+                            backgroundColor: isBull ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)',
+                        },
+                        {
+                            label: 'SuperTrend',
+                            data: stLine,
+                            borderColor: 'rgba(0,212,170,0.6)',
+                            borderWidth: 1.5,
+                            borderDash: [4, 4],
+                            tension: 0.3,
+                            pointRadius: 0,
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            display: false,
+                            grace: '5%'
+                        }
+                    },
+                    interaction: { intersect: false }
+                }
+            });
+        }
+
+        // ── MODAL ──
+        function openModal(r) {
+            document.getElementById("modalTitle").textContent = r.symbol;
+            document.getElementById("modalSubtitle").innerHTML =
+                `${r.name} &nbsp;·&nbsp; ${r.sector} &nbsp;·&nbsp; ${r.cap}`;
+
+            const isBull = r.signal === "bullish";
+            const changeClass = r.price_change >= 0 ? "change-pos" : "change-neg";
+            const changeSign = r.price_change >= 0 ? "+" : "";
+
+            document.getElementById("modalStats").innerHTML = `
+    <div class="modal-stat">
+      <div class="ms-label">Signal</div>
+      <div class="ms-val" style="color:${isBull ? 'var(--bull)' : 'var(--bear)'}">
+        ${isBull ? '▲ BULLISH' : '▼ BEARISH'}
+      </div>
+    </div>
+    <div class="modal-stat">
+      <div class="ms-label">Close Price</div>
+      <div class="ms-val">₹${r.close.toLocaleString()}</div>
+    </div>
+    <div class="modal-stat">
+      <div class="ms-label">Week Change</div>
+      <div class="ms-val ${changeClass}">${changeSign}${r.price_change}%</div>
+    </div>
+    <div class="modal-stat">
+      <div class="ms-label">SuperTrend Line</div>
+      <div class="ms-val" style="color:var(--accent)">₹${r.supertrend_line.toLocaleString()}</div>
+    </div>
+  `;
+
+            // Draw full chart
+            if (modalChart) { modalChart.destroy(); modalChart = null; }
+
+            const ctx = document.getElementById("modalChartCanvas");
+            const labels = r.candles.map(c => c.Date.slice(0, 10));
+            const prices = r.candles.map(c => c.Close);
+            const stLine = r.candles.map(c => c.supertrend_line);
+
+            modalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Close Price',
+                            data: prices,
+                            borderColor: isBull ? '#22c55e' : '#ef4444',
+                            borderWidth: 2.5,
+                            tension: 0.2,
+                            pointRadius: 3,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            backgroundColor: isBull ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                        },
+                        {
+                            label: 'SuperTrend',
+                            data: stLine,
+                            borderColor: 'rgba(0,212,170,0.8)',
+                            borderWidth: 2,
+                            borderDash: [6, 3],
+                            tension: 0.2,
+                            pointRadius: 0,
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#64748b', font: { size: 11 } }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1a2235',
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#94a3b8',
+                            borderColor: '#1e2d45',
+                            borderWidth: 1,
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#475569', font: { size: 10 }, maxRotation: 45 },
+                            grid: { color: 'rgba(30,45,69,0.5)' }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#475569',
+                                font: { size: 10 },
+                                callback: v => '₹' + v.toLocaleString()
+                            },
+                            grid: { color: 'rgba(30,45,69,0.5)' }
+                        }
+                    }
+                }
+            });
+
+            document.getElementById("modalOverlay").classList.add("open");
+        }
+
+        function closeModal(e) {
+            if (e.target === document.getElementById("modalOverlay")) closeModalDirect();
+        }
+
+        function closeModalDirect() {
+            document.getElementById("modalOverlay").classList.remove("open");
+            if (modalChart) { modalChart.destroy(); modalChart = null; }
+        }
+
+        // Close modal on Escape
+        document.addEventListener("keydown", e => {
+            if (e.key === "Escape") closeModalDirect();
+        });
+    </script>
+</body>
+
+</html>
